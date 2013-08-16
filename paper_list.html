@@ -1,0 +1,209 @@
+{% extends "admin_layout.html" %}
+{% block content %}
+<span class="hide" id="fetch_paper_details">{{ url_for('admin.fetch_paper_details') }}</span>
+<div id="paper_list">
+<div class="row show-grid">
+  <div class="col-lg-8">
+  	<h3>List of the Current Newspapers</h3>
+  	<table class="tablesorter table" id="paperTable">
+  		<thead>
+  			<tr>
+  				<th>Paper Name</th>
+        		<th>Country</th>
+        		<th>Last Updated</th>
+        		<th>Active</th>
+  			</tr>
+  		</thead>
+  		<tbody>
+  			{% for paper in papers %}
+  				<tr id="{{ paper['id'] }}" class="paper_edit_button">
+  					<td>{{ paper['name'] }}</td>
+  					<td>{{ paper['country'] }}</td>
+  					<td> {{ paper['updated'] }}</td>
+  					<td> {{ paper['active'] }}</td>
+  				</tr>
+  			{% endfor %}
+  		</tbody>
+  	</table>
+  </div>
+  <div class="col-lg-4">
+    <div id='paper_details_container'>asdfasdf</div>
+  </div>
+</div>
+</div>
+<script type="text/template" id="newspaper_data">
+  <div data-show="model.show">
+  <h3 data-text="model.name"></h3>
+  </br>
+  <table class="table">
+  <tr><td><strong>URL</strong> </td><td data-text="model.url"></td></tr>
+  <tr><td><strong>Language</strong> </td><td data-text="model.language"></td></tr>
+  <tr><td><strong>Registered on</strong> </td><td data-text="model.registration_date"></td></tr>
+  <tr><td><strong>Last updated</strong> </td><td data-text="model.last_updated"></td></tr>
+  <tr><td><strong>Country</strong> </td><td data-text="model.country"></td></tr>
+  <tr><td><strong>Type</strong> </td><td data-text="model.type"></td></tr>
+  <tr><td><strong>Importance</strong> </td><td data-text="model.importnace_point"></td></tr>
+  <tr data-show="model.active_flag"><td><strong>Active</strong> </td><td >True</td></tr>
+  <tr data-hide="model.active_flag"><td><strong>Active</strong> </td><td >False</td></tr>
+  </table>
+  <button id="activate" class="btn btn-primary" data-hide="model.active_flag">Activate</button>
+  <button id="deactivate" class="btn btn-danger" data-show="model.active_flag">Deactivate</button>
+  </div>
+</script>
+<script>
+$(document).ready(function() 
+    {
+      rivets.configure({
+        adapter: {
+            subscribe: function(obj, keypath, callback) {
+                if (obj instanceof Backbone.Collection) {
+                    obj.on('add remove reset', function () {
+                        callback(obj[keypath]);
+                    });
+                } else {
+                    obj.on('change:' + keypath, function (m, v) {
+                        callback(v);
+                    });
+                }
+            },
+            unsubscribe: function(obj, keypath, callback) {
+                if (obj instanceof Backbone.Collection) {
+                    obj.off('add remove reset', function () {
+                        callback(obj[keypath]);
+                    });
+                } else {
+                    obj.off('change:' + keypath, function (m, v) {
+                        callback(v);
+                    });
+                }
+            },
+            read: function(obj, keypath) {
+                if (obj instanceof Backbone.Collection)  {
+                    // keypath = null
+                    return obj.models;
+                } else {
+                    return obj.get(keypath);
+                }
+            },
+            publish: function(obj, keypath, value) {
+                if (obj instanceof Backbone.Collection) {
+                    obj[keypath] = value;
+                } else {
+                    obj.set(keypath, value);
+                }
+            }
+          }
+      });
+      var Footer = Backbone.Model.extend({
+        defaults:{
+          'id': 'null',
+          'name': '',
+          'url': 'null',
+          'language': 'null',
+          'registration_date': 'null',
+          'last_updated': 'null',
+          'country': 'null',
+          'type': 'null',
+          'importance_point': 'null',
+          'active_flag': 'null',
+          'show':false
+        },
+      });
+      
+
+      var FooterView = Backbone.View.extend({
+        template1:  _.template($('#newspaper_data').html()),
+        el: $('#paper_details_container'),
+        events: {
+          'click #activate': 'activate',
+          'click #deactivate': 'deactivate',
+        },
+        initialize: function () { 
+          this.render = _.wrap(this.render, function(render) {
+            this.beforeRender();
+            render();           
+            this.afterRender();
+          });           
+        },
+        render: function () {
+          return this;
+        },
+        beforeRender: function(){
+            if (this.bindings) {
+                console.log('unbinding')
+                this.bindings.unbind();
+            }
+            console.log(0)
+        },
+        afterRender: function(){
+          console.log('hello')
+          this.$el.html(this.template1);
+          this.bindings = rivets.bind(this.$el, {model: this.model}); 
+        },
+        activate: function() {
+          var _this = this
+          console.log('activating');
+          $.ajax({
+            url: '/admin/activate_paper/'+ this.model.get('id'),
+            success: function(json){
+              _this.model.set({
+                active_flag: true
+              })
+            },
+            error: function(jqXHR, textStatus, errorThrown){
+              console.log('error');
+            }
+          })
+        },
+        deactivate: function(){
+          console.log('deactivating');
+        }
+
+      });
+
+      
+      $("#paperTable").tablesorter(); 
+      $('.paper_edit_button').attr('disabled', false);
+      var footer1 = new Footer()
+      var view = new FooterView({model: footer1});
+      view.render();
+      var _this = this;
+
+      $('.paper_edit_button').on("click", function(event){
+        var previous_selections = $(".danger");
+        footer1.set({'show': false});
+        $.each(previous_selections, function(index, value){
+          $(value).removeClass('danger');
+        });
+        var paper_id = event.currentTarget.id;
+        $(this).addClass('danger');
+        $.ajax({
+              url: $("#fetch_paper_details").text()+'?paper_id='+paper_id,
+              success: function(json) {
+                footer1.set({
+                                id:json.id,
+                                name:json.name,
+                                url:json.url,
+                                language:json.language,
+                                registration_date:json.registration_date,
+                                last_updated:json.last_updated,
+                                country:json.country,
+                                type:json.type,
+                                importance_point:json.importance_point,
+                                active_flag:json.active_flag,
+                                show: true
+                              });
+              },
+              error: function(jqXHR, textStatus, errorThrown) {
+                console.log($("#fetch_paper_details").text()+'?paper_id='+paper_id);
+              },
+              type: "GET",
+              contentType : 'application/json',
+              dataType: "json"
+        });
+      // end of the ajax
+        });
+    // end of the on-click binding
+    });
+</script>
+{% endblock content %}

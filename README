@@ -1,0 +1,20 @@
+The code here is part of my ongoing news aggregator project (pet project). The code here will be used to develop a UI for admins from where they can get all the relevant details about integrated news source, and activate/ deactivate a selected newpaper.
+
+Even though the project itself is not complete, I think the work here reflects my code organization skills, and familiarity with different web technologies.
+
+
+Brief info about the files:
+
+Cosmopolit.py is used by gunicorn to start the cosmopolit app
+
+cosmopolit.py is the flask app which has admin.py as its blueprint
+
+admin.py renders the html page. paper_list.html that uses jquery, backbone and rivets.
+
+users can interact with paper_list.html and fetch details about a certain paper.
+
+any requests made by admin will come to a handler in admin.py
+
+admin.py uses ManageNewspaper.py to perform backend work. ManageNewspaper.py talk with different libraries to retrieve and store relevant data in CouchDB
+
+activate_paper function in ManageNewspaper.py make a call to a Celery Worker (fetch_news.py) and puts newspaper in the queue for retrieving the news from the paper. Each paper in the queue will be queried by FetchNews.py. If nothing goes wrong the paper will be put in queue again so that the process can be repeated in another 10 min. 
